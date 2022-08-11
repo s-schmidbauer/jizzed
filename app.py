@@ -43,7 +43,7 @@ def fields_only(query):
   
   # Return only fields and remove SELECT and FROM
   # Example ['FirstName', 'LastName', 'Persons']
-  fields = [x for x in split_query if not x.lower().startswith('select') and not x.lower().startswith('from') ]
+  fields = [x for x in split_query if not x.lower().startswith('select') and not x.lower().startswith('from') and not x.lower().startswith('where') ]
   return fields
 
 def filter_data(censor, query, data):
