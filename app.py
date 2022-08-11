@@ -12,16 +12,11 @@ app.config['MYSQL_USER'] = os.environ.get("MYSQL_USER")
 app.config['MYSQL_PASSWORD'] = os.environ.get("MYSQL_PASSWORD")
 app.config['MYSQL_DB'] = os.environ.get("MYSQL_DB")
 
-#app.config.from_envvar('MYSQL_HOST')
-#app.config.from_envvar('MYSQL_USER')
-#app.config.from_envvar('MYSQL_PASSWORD')
-#app.config.from_envvar('MYSQL_DB')
-
 censor_replacement = 'XXX'
 
 def censor_data(censor, fields_only, data):
-  # walks through each line in 'data'
-  # and replaces fields in the lines matching data with 'censor_replacement'
+  # Goes through each line in 'data' ..
+  # .. and replaces fields in the lines matching data with 'censor_replacement'
   to_censor = censor.split(',')
   counter=-1
   new_data=[]
@@ -41,14 +36,14 @@ def fields_only(query):
   # Example: ['SELECT', 'FirstName', 'LastName', 'from', 'Persons']
   split_query = query.replace(',', ' ').replace(';', '').split()
   
-  # Return only fields and remove SELECT and FROM
-  # Example ['FirstName', 'LastName', 'Persons']
-  fields = [x for x in split_query if not x.lower().startswith('select') and not x.lower().startswith('from') and not x.lower().startswith('where') ]
+  # Return only data fields and remove SQL commands
+  remove_list = ['select', 'from', 'where', 'in', 'as', 'order_by']
+  fields = [x for x in split_query if x.lower() not in remove_list]
   return fields
 
 def filter_data(censor, query, data):
   counter = -1
-  data_new = ['|'.join(i) for i in data]
+  data_new = ['|'.join(i) for i in data if data]
   return censor_data(censor, fields_only(query), data_new)
  
 @app.route('/', methods = ['POST', 'GET'])
@@ -67,19 +62,19 @@ def index():
             cursor = mysql.connection.cursor()
             cursor.execute(query)
           except Exception:
-            return "Cannot execute query or connect to SQL", 400
+            return "Cannot execute query or connect to SQL", 500
           else:
             try:
               data =  cursor.fetchall()
             except Exception:
-              return "Cannot fetch data", 400
+              return "Cannot fetch data", 500
             else:
               try:
                 data_filtered = filter_data(censor, query, data)
                 cursor.close()
               except Exception:
-                return "Something went wrong during filtering", 400
+                return "Something went wrong during filtering", 500
               else:
                 return render_template('result.html', censor=censor, query=query, data=data_filtered)
         else:
-          return "No query and censor found!", 400
+          return "No query provided!", 400
