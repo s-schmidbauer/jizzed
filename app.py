@@ -55,26 +55,30 @@ def index():
         censor = request.form['censor']
         query = request.form['query']
 
-        if query:
-          if not censor:
-            censor = ""
-          try:
-            cursor = mysql.connection.cursor()
-            cursor.execute(query)
-          except Exception:
-            return "Cannot execute query or connect to SQL", 500
-          else:
+        try:
+          cursor = mysql.connection.cursor()
+        except Exception:
+          return "Cannot make SQL connection", 500	
+        else:
+          if query:
+            if not censor:
+              censor = ""
             try:
-              data =  cursor.fetchall()
+              cursor.execute(query)
             except Exception:
-              return "Cannot fetch data", 500
+              return "Cannot execute query", 500
             else:
               try:
-                data_filtered = filter_data(censor, query, data)
-                cursor.close()
+                data =  cursor.fetchall()
               except Exception:
-                return "Something went wrong during filtering", 500
+                return "Cannot fetch data", 500
               else:
-                return render_template('result.html', censor=censor, query=query, data=data_filtered)
-        else:
-          return "No query provided!", 400
+                try:
+                  data_filtered = filter_data(censor, query, data)
+                  cursor.close()
+                except Exception:
+                  return "Something went wrong during filtering", 500
+                else:
+                  return render_template('result.html', censor=censor, query=query, data=data_filtered)
+          else:
+            return "No query provided!", 400
