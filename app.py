@@ -18,20 +18,19 @@ censor_replacement = 'XXX'
 remove_list = ['select', 'from', 'where', 'in', 'as', 'order', 'group', 'by', 'limit', 'and', 'or', 'insert', 'update', 'inner', 'outer', 'left', 'right', 'join' ]
 
 def censor_data(censor, fields_only, data):
-  # Goes through each line in 'data' ..
+  #Goes through each line in 'data' ..
   # .. and replaces fields in the lines matching data with 'censor_replacement'
   to_censor = censor.split(',')
   counter=-1
   new_data=[]
   for row in data:
     counter = counter+1
-    line = data[counter].split('|')
+    line = data[counter]
     for field in fields_only:
       if field in to_censor:
         bad_index = fields_only.index(field)
         line[bad_index] = censor_replacement
     new_data.insert(counter, line)
-
   return new_data
 
 def fields_only(query):
@@ -47,8 +46,9 @@ def fields_only(query):
   return fields
 
 def filter_data(censor, query, data):
-  counter = -1
-  data_new = ['|'.join(i) for i in data if data]
+  # Convert list of tuples to list of lists
+  data_new = [list(x) for x in data]
+
   return censor_data(censor, fields_only(query), data_new)
  
 @app.route('/', methods = ['POST', 'GET'])
