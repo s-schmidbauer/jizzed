@@ -15,7 +15,7 @@ app.config['MYSQL_DB'] = os.environ.get("MYSQL_DB")
 censor_replacement = 'XXX'
 
 # Return only data fields and remove SQL commands
-remove_list = ['select', 'from', 'where', 'in', 'as', 'order', 'group', 'by', 'limit', 'and', 'or', 'insert', 'update', 'inner', 'outer', 'left', 'right', 'join' ]
+remove_list = ['alter', 'create', 'table', 'database', 'select', 'from', 'where', 'in', 'as', 'order', 'group', 'by', 'limit', 'and', 'or', 'insert', 'update', 'inner', 'outer', 'left', 'right', 'join' ]
 
 def censor_data(censor, fields_only, data):
   #Goes through each line in 'data' ..
@@ -38,11 +38,12 @@ def fields_only(query):
   # Example: ['SELECT', 'FirstName', 'LastName', 'from', 'Persons']
   split_query = query.replace(',', ' ').replace(';', '').split()
 
-  # Remove the element after the FROM
+  # Remove the element after the from
   split_query.pop(split_query.index('from')+1)
  
   # Return only data fields and remove SQL commands
   fields = [x for x in split_query if x.lower() not in remove_list]
+  
   return fields
 
 def filter_data(censor, query, data):
@@ -68,23 +69,27 @@ def index():
           if query:
             if not censor:
               censor = ""
+            if '*' in query:
+              # Describe the table we found in 'query' ..
+              # .. and build a new query replacing the star *
+              table_name = query.split()[-1].replace(';', '')
+              cursor.execute('describe '+ table_name + ';')
+              field_list = [ x[0] for x in cursor.fetchall()]
+              new_query_fields = ', '.join(field_list)
+              query = "select " + new_query_fields + ' from ' + table_name + ';'
             try:
               cursor.execute(query)
+              data =  cursor.fetchall()
             except Exception:
-              return "Cannot execute query", 500
+              return "Cannot fetch data", 500
             else:
               try:
-                data =  cursor.fetchall()
+                data_filtered = filter_data(censor, query, data)
+                fields = fields_only(query)
+                cursor.close()
               except Exception:
-                return "Cannot fetch data", 500
+                return "Something went wrong during filtering", 500
               else:
-                try:
-                  data_filtered = filter_data(censor, query, data)
-                  fields = fields_only(query)
-                  cursor.close()
-                except Exception:
-                  return "Something went wrong during filtering", 500
-                else:
-                  return render_template('result.html', fields=fields, censor=censor, query=query, data=data_filtered)
+                return render_template('result.html', fields=fields, censor=censor, query=query, data=data_filtered)
           else:
             return "No query provided!", 400
