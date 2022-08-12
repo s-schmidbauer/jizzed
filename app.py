@@ -14,6 +14,9 @@ app.config['MYSQL_DB'] = os.environ.get("MYSQL_DB")
 
 censor_replacement = 'XXX'
 
+# Return only data fields and remove SQL commands
+remove_list = ['select', 'from', 'where', 'in', 'as', 'order', 'group', 'by', 'limit', 'and', 'or', 'insert', 'update', 'inner', 'outer', 'left', 'right', 'join' ]
+
 def censor_data(censor, fields_only, data):
   # Goes through each line in 'data' ..
   # .. and replaces fields in the lines matching data with 'censor_replacement'
@@ -35,9 +38,11 @@ def fields_only(query):
   # Remove commas and semicolon from query, split it
   # Example: ['SELECT', 'FirstName', 'LastName', 'from', 'Persons']
   split_query = query.replace(',', ' ').replace(';', '').split()
-  
+
+  # Remove the element after the FROM
+  split_query.pop(split_query.index('from')+1)
+ 
   # Return only data fields and remove SQL commands
-  remove_list = ['select', 'from', 'where', 'in', 'as', 'order_by']
   fields = [x for x in split_query if x.lower() not in remove_list]
   return fields
 
@@ -75,10 +80,11 @@ def index():
               else:
                 try:
                   data_filtered = filter_data(censor, query, data)
+                  fields = fields_only(query)
                   cursor.close()
                 except Exception:
                   return "Something went wrong during filtering", 500
                 else:
-                  return render_template('result.html', censor=censor, query=query, data=data_filtered)
+                  return render_template('result.html', fields=fields, censor=censor, query=query, data=data_filtered)
           else:
             return "No query provided!", 400
