@@ -51,6 +51,16 @@ def filter_data(censor, query, data):
   data_new = [list(x) for x in data]
 
   return censor_data(censor, fields_only(query), data_new)
+
+def build_new_query_from_description(query, cursor):
+  # Describe the table we found in 'query' ..
+  # .. and build a new query replacing the star *
+  table_name = query.split()[-1].replace(';', '')
+  cursor.execute('describe '+ table_name + ';')
+  field_list = [ x[0] for x in cursor.fetchall()]
+  new_query_fields = ', '.join(field_list)
+  new_query = "select " + new_query_fields + ' from ' + table_name + ';'
+  return new_query
  
 @app.route('/', methods = ['POST', 'GET'])
 def index():
@@ -70,13 +80,7 @@ def index():
             if not censor:
               censor = ""
             if '*' in query:
-              # Describe the table we found in 'query' ..
-              # .. and build a new query replacing the star *
-              table_name = query.split()[-1].replace(';', '')
-              cursor.execute('describe '+ table_name + ';')
-              field_list = [ x[0] for x in cursor.fetchall()]
-              new_query_fields = ', '.join(field_list)
-              query = "select " + new_query_fields + ' from ' + table_name + ';'
+              query = build_new_query_from_description(query, cursor)
             try:
               cursor.execute(query)
               data =  cursor.fetchall()
